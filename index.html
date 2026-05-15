@@ -33,7 +33,6 @@
     overflow-x: hidden;
   }
 
-  /* ── Grain overlay ── */
   body::before {
     content: '';
     position: fixed;
@@ -44,7 +43,6 @@
     opacity: .5;
   }
 
-  /* ── Header ── */
   header {
     padding: 20px 32px;
     border-bottom: 1px solid var(--border);
@@ -81,7 +79,6 @@
     letter-spacing: .05em;
   }
 
-  /* ── Layout ── */
   .app {
     display: grid;
     grid-template-columns: 1fr 360px;
@@ -90,7 +87,6 @@
     gap: 0;
   }
 
-  /* ── Player zone ── */
   .player-zone {
     grid-column: 1;
     grid-row: 1 / 3;
@@ -170,7 +166,6 @@
     margin-top: 4px;
   }
 
-  /* Prev/Next controls */
   .player-controls {
     display: flex;
     gap: 8px;
@@ -194,7 +189,6 @@
 
   .ctrl-btn:hover { background: var(--surface3); border-color: var(--accent); color: var(--accent); }
 
-  /* ── Sidebar ── */
   .sidebar {
     grid-column: 2;
     grid-row: 1 / 3;
@@ -204,7 +198,6 @@
     background: var(--surface);
   }
 
-  /* ── Playlist header ── */
   .pl-header {
     padding: 16px 16px 12px;
     border-bottom: 1px solid var(--border);
@@ -270,7 +263,6 @@
   .pill-btn:hover { border-color: var(--accent); color: var(--accent); }
   .pill-btn.danger:hover { border-color: var(--accent2); color: var(--accent2); }
 
-  /* Playlist selector */
   .playlist-select-row {
     display: flex;
     gap: 6px;
@@ -293,7 +285,6 @@
 
   .playlist-select:focus { border-color: var(--accent); }
 
-  /* ── Add video ── */
   .add-section {
     padding: 12px 16px;
     border-bottom: 1px solid var(--border);
@@ -346,7 +337,6 @@
 
   .add-btn:hover { opacity: .85; }
 
-  /* Drop zone */
   .drop-zone {
     border: 1.5px dashed var(--border);
     border-radius: var(--radius);
@@ -365,7 +355,6 @@
     color: var(--accent);
   }
 
-  /* ── Video list ── */
   .list-wrap {
     flex: 1;
     overflow-y: auto;
@@ -504,7 +493,6 @@
   .icon-btn.fav { color: var(--fav) !important; }
   .icon-btn.del:hover { color: var(--accent2) !important; }
 
-  /* ── Toast ── */
   .toast {
     position: fixed;
     bottom: 24px;
@@ -524,7 +512,6 @@
 
   .toast.show { transform: translateX(-50%) translateY(0); }
 
-  /* ── Modal ── */
   .modal-overlay {
     position: fixed;
     inset: 0;
@@ -617,7 +604,6 @@
 
   .btn-secondary:hover { border-color: var(--text2); color: var(--text); }
 
-  /* ── Responsive ── */
   @media (max-width: 700px) {
     .app {
       display: flex;
@@ -641,7 +627,7 @@
 
 <div class="app">
 
-  <!-- ── PLAYER ── -->
+  <!-- PLAYER -->
   <div class="player-zone">
     <div class="player-wrap">
       <div class="player-placeholder" id="placeholder">
@@ -651,7 +637,7 @@
         </svg>
         <p>SELECCIONÁ UN VIDEO</p>
       </div>
-      <iframe id="yt-player" name="yt-player" src="" allow="autoplay; encrypted-media" allowfullscreen style="display:none"></iframe>
+      <div id="player-container" style="position:absolute; inset:0; display:none;"></div>
     </div>
     <div class="now-playing">
       <span class="now-badge">EN CURSO</span>
@@ -669,7 +655,7 @@
     </div>
   </div>
 
-  <!-- ── SIDEBAR ── -->
+  <!-- SIDEBAR -->
   <div class="sidebar">
 
     <!-- Playlist header -->
@@ -684,6 +670,9 @@
       <div class="playlist-select-row" style="margin-top:4px;">
         <select class="playlist-select" id="playlist-select" onchange="switchPlaylist(this.value)">
         </select>
+        <button class="pill-btn" onclick="createPlaylist()" title="Nueva playlist">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        </button>
       </div>
 
       <div class="pl-actions">
@@ -695,13 +684,13 @@
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 11h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
           Importar
         </button>
-        <button class="pill-btn danger" onclick="clearPlaylist()" title="Limpiar lista">
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5 4V2.5h4V4M11 4l-.7 7.5a1 1 0 01-1 .9H4.7a1 1 0 01-1-.9L3 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Limpiar
+        <button class="pill-btn" onclick="renameCurrentPlaylist()" title="Renombrar lista">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10 2l2 2-8 8H2v-2l8-8z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Renombrar
         </button>
-        <button class="pill-btn danger" onclick="deletePlaylist()" title="Eliminar playlist actual">
+        <button class="pill-btn danger" onclick="deletePlaylist()" title="Eliminar lista">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5 4V2.5h4V4M11 4l-.7 7.5a1 1 0 01-1 .9H4.7a1 1 0 01-1-.9L3 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Eliminar lista
+          Eliminar
         </button>
       </div>
     </div>
@@ -733,26 +722,26 @@
   </div>
 </div>
 
-<!-- ── EXPORT MODAL ── -->
+<!-- EXPORT MODAL -->
 <div class="modal-overlay" id="export-modal">
   <div class="modal">
     <h3>Exportar Playlist</h3>
     <p class="modal-note">Se descargará un archivo <code>.json</code> con todas tus playlists.</p>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('export-modal')">Cerrar</button>
-      <button class="btn-primary" onclick="exportToFile()">📥 Descargar JSON</button>
+      <button class="btn-primary" onclick="exportToFile()">Descargar JSON</button>
     </div>
   </div>
 </div>
 
-<!-- ── IMPORT MODAL ── -->
+<!-- IMPORT MODAL -->
 <div class="modal-overlay" id="import-modal">
   <div class="modal">
     <h3>Importar Playlist</h3>
     <p class="modal-note">Seleccioná un archivo <code>.json</code> exportado previamente.</p>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleFileImport(this)">
     <button class="btn-secondary" onclick="document.getElementById('import-file').click()" style="width:100%; margin:8px 0;">
-      📁 Seleccionar archivo .json
+      Seleccionar archivo .json
     </button>
     <p class="modal-note" id="import-filename" style="min-height:1.2em; color:var(--accent); text-align:center;"></p>
     <div class="modal-actions">
@@ -762,55 +751,53 @@
   </div>
 </div>
 
-<!-- ── TOAST ── -->
+<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
-// ─────────────────────────────────────────
+// ============================================
 //  STATE
-// ─────────────────────────────────────────
-let playlists = [];           // array de { id, name, playlist: [] }
-let activePlaylistId = null;  // ID de la lista activa
+// ============================================
+let playlists = [];
+let activePlaylistId = null;
 let currentIndex = -1;
 let dragSrcIndex = null;
 let importFileContent = null;
 
-// Getter: lista activa actual
+// YouTube Player API instance
+let ytPlayer = null;
+let ytPlayerReady = false;
+
 function getActivePlaylist() {
   return playlists.find(p => p.id === activePlaylistId) || null;
 }
 
-// Getter: array de videos de la lista activa
 function getPlaylist() {
   const p = getActivePlaylist();
   return p ? p.playlist : [];
 }
 
-// Setter: reemplaza el array de videos de la lista activa
 function setPlaylist(arr) {
   const p = getActivePlaylist();
   if (p) p.playlist = arr;
 }
 
-// Generar ID único simple
 function genId() {
   return 'pl_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 }
 
-// ─────────────────────────────────────────
+// ============================================
 //  INIT
-// ─────────────────────────────────────────
+// ============================================
 (function init() {
   const saved = localStorage.getItem('yuulist_data');
   if (saved) {
     try {
       const data = JSON.parse(saved);
       if (data.playlists && Array.isArray(data.playlists)) {
-        // Nuevo formato (múltiples listas)
         playlists = data.playlists;
         activePlaylistId = data.activePlaylistId || playlists[0]?.id || null;
       } else if (data.playlist && Array.isArray(data.playlist)) {
-        // Migración desde formato antiguo (una sola lista)
         const newId = genId();
         playlists = [{
           id: newId,
@@ -826,7 +813,6 @@ function genId() {
     createDefaultPlaylist();
   }
 
-  // Si por alguna razón no hay lista activa, crear una
   if (!getActivePlaylist()) createDefaultPlaylist();
 
   renderPlaylistSelector();
@@ -849,9 +835,56 @@ function createDefaultPlaylist() {
   activePlaylistId = id;
 }
 
-// ─────────────────────────────────────────
+// ============================================
+//  YOUTUBE PLAYER API
+// ============================================
+function onYouTubeIframeAPIReady() {
+  ytPlayerReady = true;
+}
+
+function initYouTubePlayer(videoId) {
+  const container = document.getElementById('player-container');
+  container.innerHTML = ''; // Limpiar player anterior
+  container.style.display = 'block';
+
+  ytPlayer = new YT.Player('player-container', {
+    videoId: videoId,
+    playerVars: {
+      autoplay: 1,
+      rel: 0,
+      enablejsapi: 1,
+      origin: window.location.origin
+    },
+    events: {
+      onReady: onPlayerReady,
+      onStateChange: onPlayerStateChange
+    }
+  });
+}
+
+function onPlayerReady(event) {
+  event.target.playVideo();
+}
+
+function onPlayerStateChange(event) {
+  // YT.PlayerState.ENDED = 0
+  if (event.data === YT.PlayerState.ENDED) {
+    const pl = getPlaylist();
+    if (pl.length === 0) return;
+
+    const next = currentIndex + 1;
+    if (next < pl.length) {
+      playVideo(next);
+    } else {
+      // Loop al principio
+      playVideo(0);
+    }
+  }
+}
+
+// ============================================
 //  YOUTUBE UTILS
-// ─────────────────────────────────────────
+// ============================================
 function extractVideoId(url) {
   url = url.trim();
   const patterns = [
@@ -880,12 +913,12 @@ async function fetchTitle(id) {
   }
 }
 
-// ─────────────────────────────────────────
+// ============================================
 //  ADD VIDEO
-// ─────────────────────────────────────────
+// ============================================
 async function addVideo(url) {
   const id = extractVideoId(url);
-  if (!id) { showToast('URL inválida ⚠'); return; }
+  if (!id) { showToast('URL invalida ⚠'); return; }
 
   const pl = getPlaylist();
   if (pl.find(v => v.id === id)) { showToast('Video ya en la lista'); return; }
@@ -906,9 +939,9 @@ function addVideoFromInput() {
   input.value = '';
 }
 
-// ─────────────────────────────────────────
-//  DRAG & DROP (drop zone for URL)
-// ─────────────────────────────────────────
+// ============================================
+//  DRAG & DROP
+// ============================================
 function handleDragOver(e) {
   e.preventDefault();
   document.getElementById('drop-zone').classList.add('drag-over');
@@ -927,29 +960,27 @@ function handleDrop(e) {
   if (url) addVideo(url);
 }
 
-// ─────────────────────────────────────────
+// ============================================
 //  PLAY
-// ─────────────────────────────────────────
+// ============================================
 function playVideo(index) {
   const pl = getPlaylist();
   if (index < 0 || index >= pl.length) return;
   currentIndex = index;
   const v = pl[index];
 
-  const iframe = document.getElementById('yt-player');
   const placeholder = document.getElementById('placeholder');
-  iframe.style.display = 'block';
   placeholder.style.display = 'none';
-  
-  // Construir URL con parámetros correctos para loop continuo
-  // enablejsapi=1: habilita API
-  // origin: necesario para que postMessage funcione (usar window.location.origin o *)
-  // playlist: necesario para que el loop funcione correctamente
-  const origin = window.location.origin || '*';
-  const nextIndex = (index + 1) % pl.length;
-  const nextId = pl[nextIndex].id;
-  
-  iframe.src = `https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(origin)}&playlist=${nextId}`;
+
+  // Usar YouTube Player API para reproducir
+  if (ytPlayerReady && typeof YT !== 'undefined' && YT.Player) {
+    initYouTubePlayer(v.id);
+  } else {
+    // Fallback: iframe simple (sin eventos de estado)
+    const container = document.getElementById('player-container');
+    container.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+    container.style.display = 'block';
+  }
 
   document.getElementById('now-title').textContent = v.title;
   renderList();
@@ -957,65 +988,18 @@ function playVideo(index) {
 
 function playAdjacentVideo(dir) {
   const pl = getPlaylist();
-  const next = currentIndex + dir;
-  if (next >= 0 && next < pl.length) playVideo(next);
+  let next = currentIndex + dir;
+
+  // Loop circular
+  if (next < 0) next = pl.length - 1;
+  if (next >= pl.length) next = 0;
+
+  if (pl.length > 0) playVideo(next);
 }
 
-// ─────────────────────────────────────────
-//  YOUTUBE API - Auto-next & Anti-pause
-// ─────────────────────────────────────────
-
-// Variable para trackear si el player está listo
-let ytPlayerReady = false;
-
-function onYouTubeIframeAPIReady() {
-  ytPlayerReady = true;
-}
-
-window.addEventListener('message', function(event) {
-  // Aceptar mensajes de youtube.com o youtube-nocookie.com
-  if (!event.origin.includes('youtube.com') && !event.origin.includes('youtube-nocookie.com')) return;
-  
-  let data;
-  try {
-    data = JSON.parse(event.data);
-  } catch (e) { return; }
-  
-  // onStateChange: 0 = ENDED, 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 5 = CUED
-  if (data.event === 'onStateChange') {
-    if (data.info === 0) { // ENDED
-      const pl = getPlaylist();
-      if (pl.length === 0) return;
-      
-      const next = currentIndex + 1;
-      if (next < pl.length) {
-        playVideo(next);
-      } else {
-        // Loop al principio
-        playVideo(0);
-      }
-    }
-  }
-  
-  // onReady event
-  if (data.event === 'onReady') {
-    ytPlayerReady = true;
-  }
-});
-
-// Anti-pause: simular interacción cada 3 minutos para evitar "Continuar viendo"
-setInterval(() => {
-  const iframe = document.getElementById('yt-player');
-  if (iframe && iframe.style.display !== 'none' && iframe.contentWindow && ytPlayerReady) {
-    try {
-      iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', 'https://www.youtube.com');
-    } catch(e) {}
-  }
-}, 180000); // 3 minutos (más frecuente)
-
-// ─────────────────────────────────────────
+// ============================================
 //  RENDER
-// ─────────────────────────────────────────
+// ============================================
 function renderList() {
   const wrap = document.getElementById('list-wrap');
   const empty = document.getElementById('empty-state');
@@ -1032,7 +1016,6 @@ function renderList() {
   }
   empty.style.display = 'none';
 
-  // Diff render (simple full re-render)
   [...wrap.querySelectorAll('.video-item')].forEach(el => el.remove());
 
   playlist.forEach((v, i) => {
@@ -1075,12 +1058,10 @@ function renderList() {
       </div>
     `;
 
-    // Click to play (only on non-button areas)
     item.addEventListener('click', e => {
       if (!e.target.closest('button')) playVideo(i);
     });
 
-    // ── List drag & drop reorder ──
     item.addEventListener('dragstart', e => {
       dragSrcIndex = i;
       item.classList.add('dragging');
@@ -1115,17 +1096,25 @@ function renderList() {
 
       const pl = getPlaylist();
       const [moved] = pl.splice(dragSrcIndex, 1);
-      pl.splice(dragSrcIndex < i
-        ? (e.clientY >= item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2 ? i : i - 1)
-        : (e.clientY >= item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2 ? i + 1 : i), 0, moved);
+      const rect = item.getBoundingClientRect();
+      const insertAfter = e.clientY >= rect.top + rect.height / 2;
+
+      let targetIndex;
+      if (dragSrcIndex < i) {
+        targetIndex = insertAfter ? i : i - 1;
+      } else {
+        targetIndex = insertAfter ? i + 1 : i;
+      }
+
+      pl.splice(targetIndex, 0, moved);
       setPlaylist(pl);
 
-      // Ajustar currentIndex
       if (currentIndex === dragSrcIndex) {
-        currentIndex = getPlaylist().indexOf(moved);
-      } else {
-        const curId = getPlaylist()[currentIndex]?.id;
-        currentIndex = getPlaylist().findIndex(v => v.id === curId);
+        currentIndex = targetIndex;
+      } else if (dragSrcIndex < currentIndex && targetIndex >= currentIndex) {
+        currentIndex--;
+      } else if (dragSrcIndex > currentIndex && targetIndex <= currentIndex) {
+        currentIndex++;
       }
 
       dragSrcIndex = null;
@@ -1141,9 +1130,9 @@ function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ─────────────────────────────────────────
+// ============================================
 //  ACTIONS
-// ─────────────────────────────────────────
+// ============================================
 function toggleFav(e, index) {
   e.stopPropagation();
   const pl = getPlaylist();
@@ -1158,9 +1147,9 @@ function removeVideo(e, index) {
   const pl = getPlaylist();
 
   if (index === currentIndex) {
-    const iframe = document.getElementById('yt-player');
-    iframe.style.display = 'none';
-    iframe.src = '';
+    const container = document.getElementById('player-container');
+    container.innerHTML = '';
+    container.style.display = 'none';
     document.getElementById('placeholder').style.display = 'flex';
     document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
     currentIndex = -1;
@@ -1184,9 +1173,9 @@ function clearPlaylist() {
   if (p) p.playlist = [];
   currentIndex = -1;
 
-  const iframe = document.getElementById('yt-player');
-  iframe.style.display = 'none';
-  iframe.src = '';
+  const container = document.getElementById('player-container');
+  container.innerHTML = '';
+  container.style.display = 'none';
   document.getElementById('placeholder').style.display = 'flex';
   document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
 
@@ -1195,21 +1184,14 @@ function clearPlaylist() {
   showToast('Playlist limpiada');
 }
 
-// ─────────────────────────────────────────
+// ============================================
 //  PLAYLIST MANAGEMENT
-// ─────────────────────────────────────────
+// ============================================
 function renderPlaylistSelector() {
   const select = document.getElementById('playlist-select');
   const active = getActivePlaylist();
   select.innerHTML = '';
-  
-  // Opción placeholder
-  const placeholder = document.createElement('option');
-  placeholder.textContent = '— Cambiar playlist —';
-  placeholder.disabled = true;
-  placeholder.selected = false;
-  select.appendChild(placeholder);
-  
+
   playlists.forEach(p => {
     const opt = document.createElement('option');
     opt.value = p.id;
@@ -1217,53 +1199,48 @@ function renderPlaylistSelector() {
     if (p.id === activePlaylistId) opt.selected = true;
     select.appendChild(opt);
   });
-  
-  // Opción de renombrar
-  const renameOpt = document.createElement('option');
-  renameOpt.textContent = '✏️ Renombrar lista actual';
-  renameOpt.value = '__rename__';
-  renameOpt.style.fontStyle = 'italic';
-  select.appendChild(renameOpt);
-  
-  // Opción de nueva lista
-  const newOpt = document.createElement('option');
-  newOpt.textContent = '+ Nueva playlist';
-  newOpt.value = '__new__';
-  newOpt.style.fontStyle = 'italic';
-  select.appendChild(newOpt);
-  
+
   if (active) {
     document.getElementById('pl-name').value = active.name;
   }
 }
 
 function switchPlaylist(id) {
-  // Manejar opciones especiales del select
-  if (id === '__rename__') {
-    renameCurrentPlaylist();
-    renderPlaylistSelector(); // Resetear el select
-    return;
-  }
-  if (id === '__new__') {
-    createPlaylist();
-    renderPlaylistSelector();
-    return;
-  }
-  
   save();
   activePlaylistId = id;
   currentIndex = -1;
-  
-  const iframe = document.getElementById('yt-player');
-  iframe.style.display = 'none';
-  iframe.src = '';
+
+  const container = document.getElementById('player-container');
+  container.innerHTML = '';
+  container.style.display = 'none';
   document.getElementById('placeholder').style.display = 'flex';
   document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
-  
+
   renderPlaylistSelector();
   renderList();
   save();
   showToast('Playlist cambiada');
+}
+
+function createPlaylist() {
+  const name = prompt('Nombre de la nueva playlist:');
+  if (!name || !name.trim()) return;
+
+  const id = genId();
+  playlists.push({ id, name: name.trim(), playlist: [] });
+  activePlaylistId = id;
+  currentIndex = -1;
+
+  const container = document.getElementById('player-container');
+  container.innerHTML = '';
+  container.style.display = 'none';
+  document.getElementById('placeholder').style.display = 'flex';
+  document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
+
+  renderPlaylistSelector();
+  renderList();
+  save();
+  showToast('Playlist creada ✓');
 }
 
 function renameCurrentPlaylist() {
@@ -1279,42 +1256,21 @@ function renameCurrentPlaylist() {
   }
 }
 
-function createPlaylist() {
-  const name = prompt('Nombre de la nueva playlist:');
-  if (!name || !name.trim()) return;
-
-  const id = genId();
-  playlists.push({ id, name: name.trim(), playlist: [] });
-  activePlaylistId = id;
-  currentIndex = -1;
-
-  const iframe = document.getElementById('yt-player');
-  iframe.style.display = 'none';
-  iframe.src = '';
-  document.getElementById('placeholder').style.display = 'flex';
-  document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
-
-  renderPlaylistSelector();
-  renderList();
-  save();
-  showToast('Playlist creada ✓');
-}
-
 function deletePlaylist() {
   if (playlists.length <= 1) {
     showToast('No podés eliminar la única playlist ⚠');
     return;
   }
   const active = getActivePlaylist();
-  if (!confirm(`¿Eliminar "${active.name}"?`)) return;
+  if (!confirm('¿Eliminar "' + active.name + '"?')) return;
 
   playlists = playlists.filter(p => p.id !== activePlaylistId);
   activePlaylistId = playlists[0].id;
   currentIndex = -1;
 
-  const iframe = document.getElementById('yt-player');
-  iframe.style.display = 'none';
-  iframe.src = '';
+  const container = document.getElementById('player-container');
+  container.innerHTML = '';
+  container.style.display = 'none';
   document.getElementById('placeholder').style.display = 'flex';
   document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
 
@@ -1324,9 +1280,9 @@ function deletePlaylist() {
   showToast('Playlist eliminada');
 }
 
-// ─────────────────────────────────────────
+// ============================================
 //  SAVE / LOAD
-// ─────────────────────────────────────────
+// ============================================
 function save() {
   localStorage.setItem('yuulist_data', JSON.stringify({
     playlists,
@@ -1334,9 +1290,9 @@ function save() {
   }));
 }
 
-// ─────────────────────────────────────────
-//  EXPORT / IMPORT (archivo JSON)
-// ─────────────────────────────────────────
+// ============================================
+//  EXPORT / IMPORT
+// ============================================
 function openExportModal() {
   document.getElementById('export-modal').classList.add('open');
 }
@@ -1352,7 +1308,7 @@ function exportToFile() {
 
   const a = document.createElement('a');
   a.href = url;
-  a.download = `yuulist_export_${new Date().toISOString().slice(0,10)}.json`;
+  a.download = 'yuulist_export_' + new Date().toISOString().slice(0,10) + '.json';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1401,14 +1357,13 @@ function importFromFile() {
       playlist: Array.isArray(p.playlist) ? p.playlist : []
     }));
 
-    // Agregar a las existentes
     playlists = playlists.concat(importedPlaylists);
     activePlaylistId = playlists[playlists.length - 1].id;
     currentIndex = -1;
 
-    const iframe = document.getElementById('yt-player');
-    iframe.style.display = 'none';
-    iframe.src = '';
+    const container = document.getElementById('player-container');
+    container.innerHTML = '';
+    container.style.display = 'none';
     document.getElementById('placeholder').style.display = 'flex';
     document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
 
@@ -1416,7 +1371,7 @@ function importFromFile() {
     renderList();
     save();
     closeModal('import-modal');
-    showToast(`Importadas ${importedPlaylists.length} playlist(s) ✓`);
+    showToast('Importadas ' + importedPlaylists.length + ' playlist(s) ✓');
     importFileContent = null;
     document.getElementById('import-file').value = '';
 
@@ -1430,16 +1385,15 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 
-// Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => {
     if (e.target === overlay) overlay.classList.remove('open');
   });
 });
 
-// ─────────────────────────────────────────
+// ============================================
 //  TOAST
-// ─────────────────────────────────────────
+// ============================================
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
