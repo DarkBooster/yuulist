@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>YuuList</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.youtube.com/iframe_api"></script>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -247,6 +248,7 @@
   .pl-actions {
     display: flex;
     gap: 6px;
+    flex-wrap: wrap;
   }
 
   .pill-btn {
@@ -267,6 +269,29 @@
 
   .pill-btn:hover { border-color: var(--accent); color: var(--accent); }
   .pill-btn.danger:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Playlist selector */
+  .playlist-select-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .playlist-select {
+    flex: 1;
+    font-family: 'DM Mono', monospace;
+    font-size: .75rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 6px 10px;
+    outline: none;
+    cursor: pointer;
+    min-width: 0;
+  }
+
+  .playlist-select:focus { border-color: var(--accent); }
 
   /* ── Add video ── */
   .add-section {
@@ -608,6 +633,10 @@
 
 <header>
   <div class="logo">Yuu<span>List</span></div>
+  <div class="header-meta">
+    <span class="tag">localStorage</span>
+    <span class="tag">sin base de datos</span>
+  </div>
 </header>
 
 <div class="app">
@@ -650,12 +679,25 @@
                title="Hacé clic para renombrar" />
       </div>
       <div class="pl-meta" id="pl-meta">0 videos</div>
-      <div class="pl-actions">
-        <button class="pill-btn" onclick="openCopyModal()" title="Copiar playlist">
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><rect x="4" y="4" width="8" height="8" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M2 10V3a1 1 0 011-1h7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-          Copiar
+
+      <!-- Playlist selector -->
+      <div class="playlist-select-row">
+        <select class="playlist-select" id="playlist-select" onchange="switchPlaylist(this.value)">
+        </select>
+        <button class="pill-btn" onclick="createPlaylist()" title="Nueva playlist">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
         </button>
-        <button class="pill-btn" onclick="openImportModal()" title="Importar playlist">
+        <button class="pill-btn danger" onclick="deletePlaylist()" title="Eliminar playlist">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5 4V2.5h4V4M11 4l-.7 7.5a1 1 0 01-1 .9H4.7a1 1 0 01-1-.9L3 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+
+      <div class="pl-actions">
+        <button class="pill-btn" onclick="openExportModal()" title="Exportar playlists">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 12V5M4 8l3-3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 3h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          Exportar
+        </button>
+        <button class="pill-btn" onclick="openImportModal()" title="Importar playlists">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 11h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
           Importar
         </button>
@@ -693,15 +735,14 @@
   </div>
 </div>
 
-<!-- ── COPY MODAL ── -->
-<div class="modal-overlay" id="copy-modal">
+<!-- ── EXPORT MODAL ── -->
+<div class="modal-overlay" id="export-modal">
   <div class="modal">
-    <h3>Copiar Playlist</h3>
-    <textarea id="copy-textarea" readonly onclick="this.select()"></textarea>
-    <p class="modal-note">Copiá este texto y guardalo. Podés importarlo después usando el botón "Importar".</p>
+    <h3>Exportar Playlist</h3>
+    <p class="modal-note">Se descargará un archivo <code>.json</code> con todas tus playlists.</p>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeModal('copy-modal')">Cerrar</button>
-      <button class="btn-primary" onclick="copyToClipboard()">Copiar al portapapeles</button>
+      <button class="btn-secondary" onclick="closeModal('export-modal')">Cerrar</button>
+      <button class="btn-primary" onclick="exportToFile()">📥 Descargar JSON</button>
     </div>
   </div>
 </div>
@@ -710,11 +751,15 @@
 <div class="modal-overlay" id="import-modal">
   <div class="modal">
     <h3>Importar Playlist</h3>
-    <textarea id="import-textarea" placeholder="Pegá el texto de una playlist copiada..."></textarea>
-    <p class="modal-note">Esto reemplazará la playlist actual.</p>
+    <p class="modal-note">Seleccioná un archivo <code>.json</code> exportado previamente.</p>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleFileImport(this)">
+    <button class="btn-secondary" onclick="document.getElementById('import-file').click()" style="width:100%; margin:8px 0;">
+      📁 Seleccionar archivo .json
+    </button>
+    <p class="modal-note" id="import-filename" style="min-height:1.2em; color:var(--accent); text-align:center;"></p>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('import-modal')">Cancelar</button>
-      <button class="btn-primary" onclick="importPlaylist()">Importar</button>
+      <button class="btn-primary" onclick="importFromFile()">Importar</button>
     </div>
   </div>
 </div>
@@ -726,9 +771,33 @@
 // ─────────────────────────────────────────
 //  STATE
 // ─────────────────────────────────────────
-let playlist = [];
+let playlists = [];           // array de { id, name, playlist: [] }
+let activePlaylistId = null;  // ID de la lista activa
 let currentIndex = -1;
 let dragSrcIndex = null;
+let importFileContent = null;
+
+// Getter: lista activa actual
+function getActivePlaylist() {
+  return playlists.find(p => p.id === activePlaylistId) || null;
+}
+
+// Getter: array de videos de la lista activa
+function getPlaylist() {
+  const p = getActivePlaylist();
+  return p ? p.playlist : [];
+}
+
+// Setter: reemplaza el array de videos de la lista activa
+function setPlaylist(arr) {
+  const p = getActivePlaylist();
+  if (p) p.playlist = arr;
+}
+
+// Generar ID único simple
+function genId() {
+  return 'pl_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+}
 
 // ─────────────────────────────────────────
 //  INIT
@@ -738,17 +807,49 @@ let dragSrcIndex = null;
   if (saved) {
     try {
       const data = JSON.parse(saved);
-      playlist = data.playlist || [];
-      document.getElementById('pl-name').value = data.name || 'Mi Playlist';
-    } catch(e) {}
+      if (data.playlists && Array.isArray(data.playlists)) {
+        // Nuevo formato (múltiples listas)
+        playlists = data.playlists;
+        activePlaylistId = data.activePlaylistId || playlists[0]?.id || null;
+      } else if (data.playlist && Array.isArray(data.playlist)) {
+        // Migración desde formato antiguo (una sola lista)
+        const newId = genId();
+        playlists = [{
+          id: newId,
+          name: data.name || 'Mi Playlist',
+          playlist: data.playlist
+        }];
+        activePlaylistId = newId;
+      }
+    } catch(e) {
+      createDefaultPlaylist();
+    }
+  } else {
+    createDefaultPlaylist();
   }
+
+  // Si por alguna razón no hay lista activa, crear una
+  if (!getActivePlaylist()) createDefaultPlaylist();
+
+  renderPlaylistSelector();
   renderList();
 
-  document.getElementById('pl-name').addEventListener('input', save);
+  document.getElementById('pl-name').addEventListener('input', () => {
+    const p = getActivePlaylist();
+    if (p) p.name = document.getElementById('pl-name').value;
+    renderPlaylistSelector();
+    save();
+  });
   document.getElementById('pl-name').addEventListener('keydown', e => {
     if (e.key === 'Enter') e.target.blur();
   });
 })();
+
+function createDefaultPlaylist() {
+  const id = genId();
+  playlists.push({ id, name: 'Mi Playlist', playlist: [] });
+  activePlaylistId = id;
+}
 
 // ─────────────────────────────────────────
 //  YOUTUBE UTILS
@@ -787,10 +888,13 @@ async function fetchTitle(id) {
 async function addVideo(url) {
   const id = extractVideoId(url);
   if (!id) { showToast('URL inválida ⚠'); return; }
-  if (playlist.find(v => v.id === id)) { showToast('Video ya en la lista'); return; }
+
+  const pl = getPlaylist();
+  if (pl.find(v => v.id === id)) { showToast('Video ya en la lista'); return; }
 
   const title = await fetchTitle(id);
-  playlist.push({ id, title, fav: false });
+  pl.push({ id, title, fav: false });
+  setPlaylist(pl);
   save();
   renderList();
   showToast('Video agregado ✓');
@@ -829,24 +933,57 @@ function handleDrop(e) {
 //  PLAY
 // ─────────────────────────────────────────
 function playVideo(index) {
-  if (index < 0 || index >= playlist.length) return;
+  const pl = getPlaylist();
+  if (index < 0 || index >= pl.length) return;
   currentIndex = index;
-  const v = playlist[index];
+  const v = pl[index];
 
   const iframe = document.getElementById('yt-player');
   const placeholder = document.getElementById('placeholder');
   iframe.style.display = 'block';
   placeholder.style.display = 'none';
-  iframe.src = `https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0`;
+  iframe.src = `https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0&enablejsapi=1`;
 
   document.getElementById('now-title').textContent = v.title;
   renderList();
 }
 
 function playAdjacentVideo(dir) {
+  const pl = getPlaylist();
   const next = currentIndex + dir;
-  if (next >= 0 && next < playlist.length) playVideo(next);
+  if (next >= 0 && next < pl.length) playVideo(next);
 }
+
+// ─────────────────────────────────────────
+//  YOUTUBE API - Auto-next & Anti-pause
+// ─────────────────────────────────────────
+window.addEventListener('message', function(event) {
+  if (!event.origin.includes('youtube.com')) return;
+
+  let data;
+  try {
+    data = JSON.parse(event.data);
+  } catch (e) { return; }
+
+  // onStateChange: 0 = ENDED, 1 = PLAYING, 2 = PAUSED
+  if (data.event === 'onStateChange' && data.info === 0) {
+    const pl = getPlaylist();
+    const next = currentIndex + 1;
+    if (next < pl.length) {
+      playVideo(next);
+    } else {
+      playVideo(0); // Loop al principio
+    }
+  }
+});
+
+// Anti-pause: simular interacción cada 4 minutos para evitar "Continuar viendo"
+setInterval(() => {
+  const iframe = document.getElementById('yt-player');
+  if (iframe && iframe.style.display !== 'none' && iframe.contentWindow) {
+    iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+  }
+}, 240000);
 
 // ─────────────────────────────────────────
 //  RENDER
@@ -855,13 +992,13 @@ function renderList() {
   const wrap = document.getElementById('list-wrap');
   const empty = document.getElementById('empty-state');
   const meta = document.getElementById('pl-meta');
+  const playlist = getPlaylist();
 
   const favCount = playlist.filter(v => v.fav).length;
   meta.textContent = `${playlist.length} video${playlist.length !== 1 ? 's' : ''}${favCount ? ` · ${favCount} ★` : ''}`;
 
   if (playlist.length === 0) {
     empty.style.display = 'flex';
-    // remove all items
     [...wrap.querySelectorAll('.video-item')].forEach(el => el.remove());
     return;
   }
@@ -948,23 +1085,19 @@ function renderList() {
       item.classList.remove('drag-over-top', 'drag-over-bottom');
       if (dragSrcIndex === null || dragSrcIndex === i) return;
 
-      const rect = item.getBoundingClientRect();
-      const insertAfter = e.clientY >= rect.top + rect.height / 2;
-      const [moved] = playlist.splice(dragSrcIndex, 1);
-      let target = insertAfter ? i : i;
-      if (dragSrcIndex < i && !insertAfter) target = i - 1;
-      if (dragSrcIndex > i && insertAfter) target = i + 1;
-      // simpler approach:
-      playlist.splice(dragSrcIndex < i
-        ? (insertAfter ? i : i - 1)
-        : (insertAfter ? i + 1 : i), 0, moved);
+      const pl = getPlaylist();
+      const [moved] = pl.splice(dragSrcIndex, 1);
+      pl.splice(dragSrcIndex < i
+        ? (e.clientY >= item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2 ? i : i - 1)
+        : (e.clientY >= item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2 ? i + 1 : i), 0, moved);
+      setPlaylist(pl);
 
+      // Ajustar currentIndex
       if (currentIndex === dragSrcIndex) {
-        currentIndex = playlist.indexOf(moved);
-      } else if (currentIndex !== -1) {
-        // re-find current after mutation
-        const cur = playlist[currentIndex];
-        currentIndex = playlist.indexOf(cur);
+        currentIndex = getPlaylist().indexOf(moved);
+      } else {
+        const curId = getPlaylist()[currentIndex]?.id;
+        currentIndex = getPlaylist().findIndex(v => v.id === curId);
       }
 
       dragSrcIndex = null;
@@ -985,15 +1118,18 @@ function escHtml(str) {
 // ─────────────────────────────────────────
 function toggleFav(e, index) {
   e.stopPropagation();
-  playlist[index].fav = !playlist[index].fav;
+  const pl = getPlaylist();
+  pl[index].fav = !pl[index].fav;
+  setPlaylist(pl);
   save();
   renderList();
 }
 
 function removeVideo(e, index) {
   e.stopPropagation();
+  const pl = getPlaylist();
+
   if (index === currentIndex) {
-    // stop player
     const iframe = document.getElementById('yt-player');
     iframe.style.display = 'none';
     iframe.src = '';
@@ -1003,25 +1139,114 @@ function removeVideo(e, index) {
   } else if (index < currentIndex) {
     currentIndex--;
   }
-  playlist.splice(index, 1);
+
+  pl.splice(index, 1);
+  setPlaylist(pl);
   save();
   renderList();
   showToast('Video eliminado');
 }
 
 function clearPlaylist() {
-  if (!playlist.length) return;
+  const pl = getPlaylist();
+  if (!pl.length) return;
   if (!confirm('¿Limpiar toda la playlist?')) return;
-  playlist = [];
+
+  const p = getActivePlaylist();
+  if (p) p.playlist = [];
   currentIndex = -1;
+
   const iframe = document.getElementById('yt-player');
   iframe.style.display = 'none';
   iframe.src = '';
   document.getElementById('placeholder').style.display = 'flex';
   document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
+
   save();
   renderList();
   showToast('Playlist limpiada');
+}
+
+// ─────────────────────────────────────────
+//  PLAYLIST MANAGEMENT
+// ─────────────────────────────────────────
+function renderPlaylistSelector() {
+  const select = document.getElementById('playlist-select');
+  const active = getActivePlaylist();
+  select.innerHTML = '';
+  playlists.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    if (p.id === activePlaylistId) opt.selected = true;
+    select.appendChild(opt);
+  });
+  if (active) {
+    document.getElementById('pl-name').value = active.name;
+  }
+}
+
+function switchPlaylist(id) {
+  save();
+
+  activePlaylistId = id;
+  currentIndex = -1;
+
+  const iframe = document.getElementById('yt-player');
+  iframe.style.display = 'none';
+  iframe.src = '';
+  document.getElementById('placeholder').style.display = 'flex';
+  document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
+
+  renderPlaylistSelector();
+  renderList();
+  save();
+  showToast('Playlist cambiada');
+}
+
+function createPlaylist() {
+  const name = prompt('Nombre de la nueva playlist:');
+  if (!name || !name.trim()) return;
+
+  const id = genId();
+  playlists.push({ id, name: name.trim(), playlist: [] });
+  activePlaylistId = id;
+  currentIndex = -1;
+
+  const iframe = document.getElementById('yt-player');
+  iframe.style.display = 'none';
+  iframe.src = '';
+  document.getElementById('placeholder').style.display = 'flex';
+  document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
+
+  renderPlaylistSelector();
+  renderList();
+  save();
+  showToast('Playlist creada ✓');
+}
+
+function deletePlaylist() {
+  if (playlists.length <= 1) {
+    showToast('No podés eliminar la única playlist ⚠');
+    return;
+  }
+  const active = getActivePlaylist();
+  if (!confirm(`¿Eliminar "${active.name}"?`)) return;
+
+  playlists = playlists.filter(p => p.id !== activePlaylistId);
+  activePlaylistId = playlists[0].id;
+  currentIndex = -1;
+
+  const iframe = document.getElementById('yt-player');
+  iframe.style.display = 'none';
+  iframe.src = '';
+  document.getElementById('placeholder').style.display = 'flex';
+  document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
+
+  renderPlaylistSelector();
+  renderList();
+  save();
+  showToast('Playlist eliminada');
 }
 
 // ─────────────────────────────────────────
@@ -1029,57 +1254,100 @@ function clearPlaylist() {
 // ─────────────────────────────────────────
 function save() {
   localStorage.setItem('yuulist_data', JSON.stringify({
-    name: document.getElementById('pl-name').value,
-    playlist
+    playlists,
+    activePlaylistId
   }));
 }
 
 // ─────────────────────────────────────────
-//  COPY / IMPORT
+//  EXPORT / IMPORT (archivo JSON)
 // ─────────────────────────────────────────
-function openCopyModal() {
-  const data = {
-    name: document.getElementById('pl-name').value,
-    playlist
-  };
-  document.getElementById('copy-textarea').value = JSON.stringify(data, null, 2);
-  document.getElementById('copy-modal').classList.add('open');
+function openExportModal() {
+  document.getElementById('export-modal').classList.add('open');
 }
 
-function copyToClipboard() {
-  const ta = document.getElementById('copy-textarea');
-  ta.select();
-  navigator.clipboard.writeText(ta.value)
-    .then(() => showToast('¡Copiado al portapapeles! ✓'))
-    .catch(() => { document.execCommand('copy'); showToast('¡Copiado! ✓'); });
-  closeModal('copy-modal');
+function exportToFile() {
+  const data = {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    playlists
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `yuulist_export_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  closeModal('export-modal');
+  showToast('Archivo exportado ✓');
 }
 
 function openImportModal() {
-  document.getElementById('import-textarea').value = '';
+  importFileContent = null;
+  document.getElementById('import-filename').textContent = '';
+  document.getElementById('import-file').value = '';
   document.getElementById('import-modal').classList.add('open');
 }
 
-function importPlaylist() {
-  const text = document.getElementById('import-textarea').value.trim();
-  if (!text) return;
+function handleFileImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  document.getElementById('import-filename').textContent = file.name;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    importFileContent = e.target.result;
+  };
+  reader.readAsText(file);
+}
+
+function importFromFile() {
+  if (!importFileContent) {
+    showToast('Seleccioná un archivo primero ⚠');
+    return;
+  }
+
   try {
-    const data = JSON.parse(text);
-    if (!Array.isArray(data.playlist)) throw new Error();
-    playlist = data.playlist;
-    if (data.name) document.getElementById('pl-name').value = data.name;
+    const data = JSON.parse(importFileContent);
+
+    if (!data.playlists || !Array.isArray(data.playlists)) {
+      throw new Error('Formato inválido');
+    }
+
+    const importedPlaylists = data.playlists.map(p => ({
+      id: genId(),
+      name: p.name || 'Playlist importada',
+      playlist: Array.isArray(p.playlist) ? p.playlist : []
+    }));
+
+    // Agregar a las existentes
+    playlists = playlists.concat(importedPlaylists);
+    activePlaylistId = playlists[playlists.length - 1].id;
     currentIndex = -1;
+
     const iframe = document.getElementById('yt-player');
     iframe.style.display = 'none';
     iframe.src = '';
     document.getElementById('placeholder').style.display = 'flex';
     document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningún video seleccionado</span>';
-    save();
+
+    renderPlaylistSelector();
     renderList();
+    save();
     closeModal('import-modal');
-    showToast(`Playlist importada: ${playlist.length} videos ✓`);
-  } catch {
-    showToast('Formato inválido ⚠');
+    showToast(`Importadas ${importedPlaylists.length} playlist(s) ✓`);
+    importFileContent = null;
+    document.getElementById('import-file').value = '';
+
+  } catch (err) {
+    showToast('Archivo inválido ⚠');
+    console.error(err);
   }
 }
 
