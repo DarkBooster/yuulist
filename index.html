@@ -20,6 +20,13 @@
 <meta name="twitter:title" content="YuuList">
 <meta name="twitter:description" content="Playlist manager para YouTube">
 <meta name="twitter:image" content="https://darkbooster.github.io/yuulist/apple-touch-icon.png?v=2">
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="YuuList">
+<meta name="theme-color" content="#0a0a0f">
 <style>
 :root {
   --bg: #0a0a0f;
@@ -218,80 +225,7 @@ header {
 .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
 .ctrl-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(232,255,71,.1); }
 
-/* ── MINI PLAYER (floating) ── */
-.mini-player {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 280px;
-  background: #000;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  z-index: 9000;
-  display: none;
-  flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0,0,0,.6);
-  cursor: move;
-  user-select: none;
-}
-.mini-player.visible { display: flex; }
-.mini-player-header {
-  background: var(--surface);
-  padding: 6px 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: .65rem;
-  color: var(--text3);
-  border-bottom: 1px solid var(--border);
-  cursor: move;
-}
-.mini-player-title {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text2);
-}
-.mini-close-btn {
-  background: none;
-  border: none;
-  color: var(--text3);
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  border-radius: 4px;
-  transition: color .15s;
-}
-.mini-close-btn:hover { color: var(--text); }
-.mini-expand-btn {
-  background: none;
-  border: none;
-  color: var(--text3);
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  border-radius: 4px;
-  transition: color .15s;
-}
-.mini-expand-btn:hover { color: var(--accent); }
-.mini-video-wrap {
-  position: relative;
-  width: 100%;
-  padding-top: 56.25%;
-  background: #000;
-}
-.mini-video-wrap iframe,
-.mini-video-wrap #mini-player-container {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-}
+
 
 /* ── SIDEBAR ── */
 .sidebar {
@@ -686,7 +620,6 @@ header {
   .app { display: flex; flex-direction: column; height: auto; min-height: calc(100vh - 53px); }
   .player-zone { border-right: none; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .sidebar { flex: 1; min-height: 0; height: auto; }
-  .mini-player { width: 220px; }
 }
 </style>
 </head>
@@ -735,10 +668,7 @@ header {
         <button class="ctrl-btn" id="btn-collapse" title="Colapsar video" onclick="toggleCollapseVideo()">
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 9l5-5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <!-- Mini player flotante -->
-        <button class="ctrl-btn" id="btn-mini" title="Mini ventana flotante" onclick="toggleMiniPlayer()">
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/><rect x="6" y="6" width="6" height="6" rx="1" fill="currentColor" opacity=".6"/></svg>
-        </button>
+
       </div>
     </div>
   </div>
@@ -819,21 +749,6 @@ header {
   </div>
 </div>
 
-<!-- ══ MINI PLAYER FLOTANTE ══ -->
-<div class="mini-player" id="mini-player">
-  <div class="mini-player-header" id="mini-drag-handle">
-    <span class="mini-player-title" id="mini-title">Sin video</span>
-    <button class="mini-expand-btn" onclick="closeMiniPlayer()" title="Volver a pantalla completa">
-      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 12l10-10M8 2h4v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-    <button class="mini-close-btn" onclick="closeMiniPlayerHide()" title="Cerrar mini">
-      <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-    </button>
-  </div>
-  <div class="mini-video-wrap">
-    <div id="mini-player-container"></div>
-  </div>
-</div>
 
 <!-- ══ MODALS ══ -->
 
@@ -896,7 +811,6 @@ var ytPlayer = null;
 var ytApiReady = false;
 var pendingVideoId = null;
 var pendingSeekTime = 0;
-var isMiniMode = false;
 var isCollapsed = false;
 
 // Keep-alive
@@ -966,7 +880,6 @@ function genId() {
   renderPlaylistSelector();
   renderList();
   initKeepAlive();
-  initMiniPlayerDrag();
 
   document.getElementById('pl-name').addEventListener('input', function() {
     var p = getActivePlaylist();
@@ -1107,10 +1020,6 @@ function onYouTubeIframeAPIReady() {
 }
 
 function createPlayerAndPlay(videoId) {
-  if (isMiniMode) {
-    createMiniYTPlayer(videoId);
-    return;
-  }
   document.getElementById('placeholder').style.display = 'none';
   document.getElementById('player-container').style.display = 'block';
 
@@ -1145,38 +1054,6 @@ function createPlayerAndPlay(videoId) {
     }
   });
   pendingSeekTime = 0;
-}
-
-function createMiniYTPlayer(videoId) {
-  var container = document.getElementById('mini-player-container');
-  container.innerHTML = '';
-  if (ytPlayer && ytPlayer.loadVideoById) {
-    // Move player to mini
-    try {
-      var el = ytPlayer.getIframe();
-      el.style.position = 'absolute';
-      el.style.inset = '0';
-      el.style.width = '100%';
-      el.style.height = '100%';
-      container.appendChild(el);
-      ytPlayer.loadVideoById(videoId);
-    } catch(e) {
-      container.innerHTML = '<iframe src="https://www.youtube.com/embed/' + videoId + '?autoplay=1&rel=0" style="position:absolute;inset:0;width:100%;height:100%;border:none;" allow="autoplay;encrypted-media" allowfullscreen></iframe>';
-    }
-    return;
-  }
-
-  ytPlayer = new YT.Player('mini-player-container', {
-    height: '100%',
-    width: '100%',
-    videoId: videoId,
-    playerVars: { autoplay: 1, rel: 0, enablejsapi: 1, playsinline: 1 },
-    events: {
-      onReady: function(e) { e.target.playVideo(); startSilentAudio(); startFallbackDetection(); },
-      onStateChange: onPlayerStateChange,
-      onError: onPlayerError
-    }
-  });
 }
 
 function onPlayerStateChange(event) {
@@ -1243,12 +1120,10 @@ function stopPlayer() {
   if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
   var c = document.getElementById('player-container');
   c.innerHTML = ''; c.style.display = 'none';
-  document.getElementById('mini-player-container').innerHTML = '';
   ytPlayer = null;
   document.getElementById('placeholder').style.display = 'flex';
   document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningun video seleccionado</span>';
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
-  document.getElementById('mini-title').textContent = 'Sin video';
 }
 
 // ════════════════════════════════════════════
@@ -1267,141 +1142,6 @@ function toggleCollapseVideo() {
     btn.classList.remove('active');
     btn.title = 'Colapsar video';
   }
-}
-
-function toggleMiniPlayer() {
-  if (isMiniMode) {
-    closeMiniPlayer();
-  } else {
-    openMiniPlayer();
-  }
-}
-
-function openMiniPlayer() {
-  isMiniMode = true;
-  var mini = document.getElementById('mini-player');
-  mini.classList.add('visible');
-  document.getElementById('btn-mini').classList.add('active');
-  document.getElementById('btn-mini').title = 'Cerrar mini ventana';
-
-  // Mover el iframe al mini player
-  var mainContainer = document.getElementById('player-container');
-  var miniContainer = document.getElementById('mini-player-container');
-
-  if (ytPlayer && ytPlayer.getIframe) {
-    try {
-      var iframe = ytPlayer.getIframe();
-      miniContainer.appendChild(iframe);
-      iframe.style.position = 'absolute';
-      iframe.style.inset = '0';
-      iframe.style.width = '100%';
-      iframe.style.height = '100%';
-      iframe.style.border = 'none';
-      mainContainer.style.display = 'none';
-    } catch(e) {
-      // Fallback: crear iframe directo en mini
-      var pl = getPlaylist();
-      if (pl[currentIndex]) {
-        miniContainer.innerHTML = '<iframe src="https://www.youtube.com/embed/' + pl[currentIndex].id + '?autoplay=1&rel=0" style="position:absolute;inset:0;width:100%;height:100%;border:none;" allow="autoplay;encrypted-media" allowfullscreen></iframe>';
-      }
-    }
-  }
-
-  // Mostrar placeholder en main
-  document.getElementById('placeholder').style.display = 'flex';
-  document.getElementById('player-wrap').classList.remove('collapsed');
-}
-
-function closeMiniPlayer() {
-  isMiniMode = false;
-  var mini = document.getElementById('mini-player');
-  mini.classList.remove('visible');
-  document.getElementById('btn-mini').classList.remove('active');
-  document.getElementById('btn-mini').title = 'Mini ventana flotante';
-
-  // Mover iframe de vuelta al main
-  var mainContainer = document.getElementById('player-container');
-  var miniContainer = document.getElementById('mini-player-container');
-
-  if (ytPlayer && ytPlayer.getIframe) {
-    try {
-      var iframe = ytPlayer.getIframe();
-      mainContainer.innerHTML = '';
-      mainContainer.appendChild(iframe);
-      iframe.style.position = 'absolute';
-      iframe.style.inset = '0';
-      iframe.style.width = '100%';
-      iframe.style.height = '100%';
-      iframe.style.border = 'none';
-      mainContainer.style.display = 'block';
-      miniContainer.innerHTML = '';
-      document.getElementById('placeholder').style.display = 'none';
-    } catch(e) {}
-  }
-}
-
-function closeMiniPlayerHide() {
-  // Cerrar mini y volver a main
-  closeMiniPlayer();
-}
-
-// ════════════════════════════════════════════
-//  MINI PLAYER DRAG
-// ════════════════════════════════════════════
-function initMiniPlayerDrag() {
-  var mini = document.getElementById('mini-player');
-  var handle = document.getElementById('mini-drag-handle');
-  var startX, startY, startLeft, startTop;
-  var dragging = false;
-
-  handle.addEventListener('mousedown', function(e) {
-    if (e.target.closest('button')) return;
-    dragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    var rect = mini.getBoundingClientRect();
-    startLeft = rect.left;
-    startTop = rect.top;
-    mini.style.transition = 'none';
-    e.preventDefault();
-  });
-
-  document.addEventListener('mousemove', function(e) {
-    if (!dragging) return;
-    var dx = e.clientX - startX;
-    var dy = e.clientY - startY;
-    var newLeft = Math.max(0, Math.min(window.innerWidth - mini.offsetWidth, startLeft + dx));
-    var newTop = Math.max(0, Math.min(window.innerHeight - mini.offsetHeight, startTop + dy));
-    mini.style.right = 'auto';
-    mini.style.bottom = 'auto';
-    mini.style.left = newLeft + 'px';
-    mini.style.top = newTop + 'px';
-  });
-
-  document.addEventListener('mouseup', function() { dragging = false; });
-
-  // Touch support
-  handle.addEventListener('touchstart', function(e) {
-    if (e.target.closest('button')) return;
-    var t = e.touches[0];
-    startX = t.clientX; startY = t.clientY;
-    var rect = mini.getBoundingClientRect();
-    startLeft = rect.left; startTop = rect.top;
-    mini.style.transition = 'none';
-  }, { passive: true });
-
-  handle.addEventListener('touchmove', function(e) {
-    var t = e.touches[0];
-    var dx = t.clientX - startX;
-    var dy = t.clientY - startY;
-    var newLeft = Math.max(0, Math.min(window.innerWidth - mini.offsetWidth, startLeft + dx));
-    var newTop = Math.max(0, Math.min(window.innerHeight - mini.offsetHeight, startTop + dy));
-    mini.style.right = 'auto';
-    mini.style.bottom = 'auto';
-    mini.style.left = newLeft + 'px';
-    mini.style.top = newTop + 'px';
-    e.preventDefault();
-  }, { passive: false });
 }
 
 // ════════════════════════════════════════════
@@ -1510,7 +1250,6 @@ function playVideo(index) {
   var v = pl[index];
 
   document.getElementById('now-title').textContent = v.title;
-  document.getElementById('mini-title').textContent = v.title;
   updateMediaSession(v.title, v.id);
 
   if (ytApiReady && typeof YT !== 'undefined' && YT.Player) {
@@ -1783,6 +1522,14 @@ function showToast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2400);
 }
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/yuulist/sw.js')
+      .then(function() { console.log('[YuuList] SW registrado'); })
+      .catch(function(err) { console.error('[YuuList] SW error:', err); });
+  }
 </script>
 </body>
 </html>
