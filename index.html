@@ -644,6 +644,8 @@ header {
         <p>SELECCIONA UN VIDEO</p>
       </div>
       <div id="player-container"></div>
+      <!-- Reproductor de audio nativo (usado cuando el backend está disponible) -->
+      <audio id="yt-audio" style="display:none" preload="none"></audio>
     </div>
 
     <!-- Resume banner -->
@@ -800,6 +802,13 @@ header {
 // ════════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════════
+// ════════════════════════════════════════════
+//  CONFIGURACIÓN DEL BACKEND
+//  Cuando tengas la URL de Render, reemplazá el valor de API_URL
+//  Ejemplo: var API_URL = 'https://yuulist-api.onrender.com';
+// ════════════════════════════════════════════
+var API_URL = 'https://yuulist-api.onrender.com'; // <-- LÍNEA 1: pegá tu URL de Render acá
+
 var playlists = [];
 var activePlaylistId = null;
 var currentIndex = -1;
@@ -812,6 +821,7 @@ var ytApiReady = false;
 var pendingVideoId = null;
 var pendingSeekTime = 0;
 var isCollapsed = false;
+var useNativeAudio = false; // se activa automáticamente si el backend responde
 
 // Keep-alive
 var wakeLock = null;
@@ -893,27 +903,40 @@ function genId() {
 
   // Guardar tiempo al cerrar/cambiar pestaña
   window.addEventListener('beforeunload', function() {
-    if (ytPlayer && ytPlayer.getCurrentTime && currentIndex >= 0) {
-      var t = 0;
+    if (currentIndex < 0) return;
+    var t = 0;
+    if (useNativeAudio) {
+      var audio = document.getElementById('yt-audio');
+      if (audio) t = audio.currentTime || 0;
+    } else if (ytPlayer && ytPlayer.getCurrentTime) {
       try { t = ytPlayer.getCurrentTime(); } catch(e){}
-      saveWithTime(t);
     }
+    saveWithTime(t);
   });
 
   // Visibilitychange: reanudar si se pausó por inactividad
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
-      setTimeout(function() {
-        if (ytPlayer && ytPlayer.getPlayerState) {
-          try {
-            var state = ytPlayer.getPlayerState();
-            // Si estaba reproduciendo y se pausó solo
-            if (state === 2 && lastPlayerState === 1) {
-              ytPlayer.playVideo();
-            }
-          } catch(e){}
+      // Reanudar audio nativo si estaba reproduciendo
+      if (useNativeAudio) {
+        var audio = document.getElementById('yt-audio');
+        if (audio && audio.paused && audio.src) {
+          audio.play().catch(function(){});
         }
-      }, 500);
+        return;
+      }
+      // Reanudar iframe si se pausó solo
+      [500, 1500, 3000].forEach(function(ms) {
+        setTimeout(function() {
+          if (ytPlayer && ytPlayer.getPlayerState) {
+            try {
+              if (ytPlayer.getPlayerState() === 2 && lastPlayerState === 1) {
+                ytPlayer.playVideo();
+              }
+            } catch(e){}
+          }
+        }, ms);
+      });
     }
   });
 })();
@@ -1121,6 +1144,10 @@ function stopPlayer() {
   var c = document.getElementById('player-container');
   c.innerHTML = ''; c.style.display = 'none';
   ytPlayer = null;
+  // Limpiar audio nativo también
+  var audio = document.getElementById('yt-audio');
+  audio.pause(); audio.src = ''; audio.style.display = 'none';
+  useNativeAudio = false;
   document.getElementById('placeholder').style.display = 'flex';
   document.getElementById('now-title').innerHTML = '<span class="now-empty">Ningun video seleccionado</span>';
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
@@ -1241,29 +1268,94 @@ function handleDrop(e) {
 }
 
 // ════════════════════════════════════════════
-//  PLAY
+//  BACKEND AUDIO (reproducción nativa sin pausas)
 // ════════════════════════════════════════════
-function playVideo(index) {
-  var pl = getPlaylist();
-  if (index < 0 || index >= pl.length) return;
-  currentIndex = index;
-  var v = pl[index];
+async function fetchAudioUrl(videoId) {
+  // Si no hay API configurada, usar iframe directamente
+  if (!API_URL) return null;
+  try {
+    var r = await fetch(API_URL + '/audio?id=' + videoId, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    var data = await r.json();
+    return data.url || null;
+  } catch(e) {
+    console.log('[YuuList] Backend no disponible, usando iframe');
+    return null;
+  }
+}
 
-  document.getElementById('now-title').textContent = v.title;
-  updateMediaSession(v.title, v.id);
+function playWithNativeAudio(audioUrl, seekTime) {
+  var audio = document.getElementById('yt-audio');
+  var container = document.getElementById('player-container');
+  var placeholder = document.getElementById('placeholder');
+
+  // Ocultar iframe, mostrar audio nativo
+  container.style.display = 'none';
+  container.innerHTML = '';
+  placeholder.style.display = 'none';
+  audio.style.display = 'block';
+
+  audio.src = audioUrl;
+  audio.currentTime = seekTime || 0;
+  audio.play().catch(function() {
+    // Si falla el audio nativo, caer al iframe
+    useNativeAudio = false;
+    playWithIframe(currentIndex);
+  });
+
+  // Al terminar, pasar al siguiente
+  audio.onended = function() { handleVideoEnded(); };
+}
+
+function playWithIframe(index) {
+  var pl = getPlaylist();
+  var v = pl[index];
+  var audio = document.getElementById('yt-audio');
+  audio.pause();
+  audio.src = '';
+  audio.style.display = 'none';
 
   if (ytApiReady && typeof YT !== 'undefined' && YT.Player) {
     createPlayerAndPlay(v.id);
   } else {
-    pendingVideoId = v.id;
-    if (!isMiniMode) {
-      var container = document.getElementById('player-container');
-      document.getElementById('placeholder').style.display = 'none';
-      container.style.display = 'block';
-      container.innerHTML = '<iframe width="100%" height="100%" src="https://www.youtube.com/embed/' + v.id + '?autoplay=1&rel=0&start=' + Math.floor(pendingSeekTime||0) + '" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;"></iframe>';
-      pendingSeekTime = 0;
+    var container = document.getElementById('player-container');
+    document.getElementById('placeholder').style.display = 'none';
+    container.style.display = 'block';
+    container.innerHTML = '<iframe width="100%" height="100%" src="https://www.youtube.com/embed/' + v.id + '?autoplay=1&rel=0&start=' + Math.floor(pendingSeekTime||0) + '" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;"></iframe>';
+    pendingSeekTime = 0;
+  }
+}
+
+// ════════════════════════════════════════════
+//  PLAY
+// ════════════════════════════════════════════
+async function playVideo(index) {
+  var pl = getPlaylist();
+  if (index < 0 || index >= pl.length) return;
+  currentIndex = index;
+  var v = pl[index];
+  var seekTime = pendingSeekTime || 0;
+  pendingSeekTime = 0;
+
+  document.getElementById('now-title').textContent = v.title;
+  updateMediaSession(v.title, v.id);
+
+  // Intentar audio nativo si hay backend configurado
+  if (API_URL) {
+    var audioUrl = await fetchAudioUrl(v.id);
+    if (audioUrl) {
+      useNativeAudio = true;
+      playWithNativeAudio(audioUrl, seekTime);
+      renderList();
+      save();
+      return;
     }
   }
+
+  // Fallback: iframe de YouTube
+  useNativeAudio = false;
+  pendingSeekTime = seekTime;
+  playWithIframe(index);
 
   renderList();
   save();
