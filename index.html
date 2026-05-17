@@ -644,9 +644,9 @@ header {
         <p>SELECCIONA UN VIDEO</p>
       </div>
       <div id="player-container"></div>
-      <!-- Reproductor de audio nativo (usado cuando el backend está disponible) -->
-      <audio id="yt-audio" style="display:none" preload="none"></audio>
     </div>
+    <!-- Reproductor de audio nativo (usado cuando el backend está disponible) -->
+    <audio id="yt-audio" style="display:none" preload="none"></audio>
 
     <!-- Resume banner -->
     <div class="resume-banner" id="resume-banner">
@@ -990,10 +990,20 @@ function initKeepAlive() {
     navigator.mediaSession.setActionHandler('previoustrack', function() { playAdjacentVideo(-1); });
     navigator.mediaSession.setActionHandler('nexttrack', function() { playAdjacentVideo(1); });
     navigator.mediaSession.setActionHandler('play', function() {
-      if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
+      if (useNativeAudio) {
+        var a = document.getElementById('yt-audio');
+        if (a) a.play().catch(function(){});
+      } else if (ytPlayer && ytPlayer.playVideo) {
+        ytPlayer.playVideo();
+      }
     });
     navigator.mediaSession.setActionHandler('pause', function() {
-      if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+      if (useNativeAudio) {
+        var a = document.getElementById('yt-audio');
+        if (a) a.pause();
+      } else if (ytPlayer && ytPlayer.pauseVideo) {
+        ytPlayer.pauseVideo();
+      }
     });
   }
 }
