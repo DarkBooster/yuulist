@@ -926,7 +926,7 @@ function genId() {
         return;
       }
       // Reanudar iframe si se pausó solo
-      [500, 1500, 3000].forEach(function(ms) {
+      [200, 300, 400, 500, 1000, 2000, 4000].forEach(function(ms) {
         setTimeout(function() {
           if (ytPlayer && ytPlayer.getPlayerState) {
             try {
